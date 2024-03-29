@@ -53,6 +53,27 @@ private
     class HTTP < ::Net::HTTP
       class << self
         attr_accessor :endpoint
+
+        # Dynamically handle missing constants for HTTP verbs
+        def const_missing(name)
+          # Correctly capitalize HTTP method names (e.g., "Get", "Post")
+          method_name = name.to_s.upcase
+
+          # Define whether the HTTP method usually has a request body
+          request_has_body = ['POST', 'PUT', 'PATCH', 'DELETE'].include?(method_name)
+
+          # Dynamically create a subclass of Net::HTTPRequest
+          klass = Class.new(::Net::HTTPRequest) do
+            # Define necessary constants for the HTTP method
+            const_set(:METHOD, method_name)
+            const_set(:REQUEST_HAS_BODY, request_has_body)
+            const_set(:RESPONSE_HAS_BODY, true)
+          end
+
+          # Assign the newly created class to the constant name
+          const_set(name, klass)
+          klass
+        end
       end
 
       # Net::HTTP uses a @newimpl instance variable to decide whether
